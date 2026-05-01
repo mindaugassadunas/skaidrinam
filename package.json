@@ -2,10 +2,10 @@
   "name": "paysera-donate-skaidrinam",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "description": "Paysera donation signing endpoint for skaidrinam.lt",
   "devDependencies": {
     "@types/node": "^20.11.0",
-    "@vercel/node": "^3.2.0",
     "typescript": "^5.4.0"
   }
 }
