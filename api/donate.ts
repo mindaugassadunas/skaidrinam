@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 
-export const config = { runtime: 'edge' };
+export const config = { runtime: 'nodejs20.x' };
 
 const ALLOWED_ORIGIN = 'https://skaidrinam.lt';
 

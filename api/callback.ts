@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 
-export const config = { runtime: 'edge' };
+export const config = { runtime: 'nodejs20.x' };
 
 export default async function handler(req: Request) {
   const signPassword = process.env.PAYSERA_SIGN_PASSWORD;
