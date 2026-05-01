@@ -1,10 +1,17 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import crypto from 'node:crypto';
 
-const ALLOWED_ORIGIN = 'https://skaidrinam.lt';
+const ALLOWED_ORIGINS = new Set([
+  'https://skaidrinam.lt',
+  'https://skaidrinam.webflow.io',
+]);
 
-function setCors(res: ServerResponse) {
-  res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
+function setCors(req: IncomingMessage, res: ServerResponse) {
+  const origin = req.headers.origin;
+  if (origin && ALLOWED_ORIGINS.has(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+  }
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 }
@@ -26,7 +33,7 @@ function readBody(req: IncomingMessage): Promise<string> {
 
 export default async function handler(req: IncomingMessage, res: ServerResponse) {
   try {
-    setCors(res);
+    setCors(req, res);
 
     if (req.method === 'OPTIONS') {
       res.statusCode = 204;
