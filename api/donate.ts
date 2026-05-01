@@ -1,40 +1,45 @@
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 import crypto from 'node:crypto';
-
-export const config = { runtime: 'nodejs' };
 
 const ALLOWED_ORIGIN = 'https://skaidrinam.lt';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
-};
+function setCors(res: VercelResponse) {
+  res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+}
 
-export default async function handler(req: Request) {
+export default function handler(req: VercelRequest, res: VercelResponse) {
+  setCors(res);
+
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    res.status(204).end();
+    return;
   }
 
   if (req.method !== 'POST') {
-    return Response.json({ error: 'Method not allowed' }, { status: 405, headers: corsHeaders });
+    res.status(405).json({ error: 'Method not allowed' });
+    return;
   }
 
   const projectId = process.env.PAYSERA_PROJECT_ID;
   const signPassword = process.env.PAYSERA_SIGN_PASSWORD;
 
   if (!projectId || !signPassword) {
-    return Response.json({ error: 'Server misconfigured' }, { status: 500, headers: corsHeaders });
+    res.status(500).json({ error: 'Server misconfigured' });
+    return;
   }
 
-  let amount: unknown;
-  try {
-    ({ amount } = await req.json());
-  } catch {
-    return Response.json({ error: 'Invalid JSON' }, { status: 400, headers: corsHeaders });
+  const body = typeof req.body === 'string' ? safeParse(req.body) : req.body;
+  if (!body || typeof body !== 'object') {
+    res.status(400).json({ error: 'Invalid JSON' });
+    return;
   }
 
+  const amount = (body as { amount?: unknown }).amount;
   if (typeof amount !== 'number' || !Number.isInteger(amount) || amount < 100 || amount > 1000000) {
-    return Response.json({ error: 'Invalid amount' }, { status: 400, headers: corsHeaders });
+    res.status(400).json({ error: 'Invalid amount' });
+    return;
   }
 
   const params: Record<string, string> = {
@@ -42,7 +47,7 @@ export default async function handler(req: Request) {
     orderid: `don_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`,
     accepturl: 'https://skaidrinam.lt/aciu',
     cancelurl: 'https://skaidrinam.lt/parama',
-    callbackurl: 'https://paysera-donate-skaidrinam.vercel.app/api/callback',
+    callbackurl: 'https://skaidrinam.vercel.app/api/callback',
     amount: String(amount),
     currency: 'EUR',
     country: 'LT',
@@ -60,8 +65,13 @@ export default async function handler(req: Request) {
     .update(data + signPassword)
     .digest('hex');
 
-  return Response.json(
-    { url: `https://www.paysera.com/pay/?data=${data}&sign=${sign}` },
-    { headers: corsHeaders }
-  );
+  res.status(200).json({ url: `https://www.paysera.com/pay/?data=${data}&sign=${sign}` });
+}
+
+function safeParse(raw: string): unknown {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
 }

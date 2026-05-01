@@ -1,21 +1,21 @@
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 import crypto from 'node:crypto';
 
-export const config = { runtime: 'nodejs' };
-
-export default async function handler(req: Request) {
+export default function handler(req: VercelRequest, res: VercelResponse) {
   const signPassword = process.env.PAYSERA_SIGN_PASSWORD;
   const projectId = process.env.PAYSERA_PROJECT_ID;
 
   if (!signPassword || !projectId) {
-    return new Response('Server misconfigured', { status: 500 });
+    res.status(500).send('Server misconfigured');
+    return;
   }
 
-  const url = new URL(req.url);
-  const data = url.searchParams.get('data');
-  const ss1 = url.searchParams.get('ss1');
+  const data = typeof req.query.data === 'string' ? req.query.data : null;
+  const ss1 = typeof req.query.ss1 === 'string' ? req.query.ss1 : null;
 
   if (!data || !ss1) {
-    return new Response('Missing parameters', { status: 400 });
+    res.status(400).send('Missing parameters');
+    return;
   }
 
   const expectedSs1 = crypto
@@ -24,7 +24,8 @@ export default async function handler(req: Request) {
     .digest('hex');
 
   if (expectedSs1 !== ss1) {
-    return new Response('Invalid signature', { status: 400 });
+    res.status(400).send('Invalid signature');
+    return;
   }
 
   const decoded = Buffer.from(
@@ -35,23 +36,22 @@ export default async function handler(req: Request) {
   const payload = Object.fromEntries(new URLSearchParams(decoded));
 
   if (payload.projectid !== projectId) {
-    return new Response('Invalid project', { status: 400 });
+    res.status(400).send('Invalid project');
+    return;
   }
 
-  if (payload.status !== '1') {
-    return new Response('OK', { status: 200 });
+  if (payload.status === '1') {
+    console.log('paysera_payment_confirmed', {
+      orderid: payload.orderid,
+      amount: payload.amount,
+      currency: payload.currency,
+      payamount: payload.payamount,
+      paycurrency: payload.paycurrency,
+      payer_email: payload.p_email,
+      payment: payload.payment,
+      requestid: payload.requestid,
+    });
   }
 
-  console.log('paysera_payment_confirmed', {
-    orderid: payload.orderid,
-    amount: payload.amount,
-    currency: payload.currency,
-    payamount: payload.payamount,
-    paycurrency: payload.paycurrency,
-    payer_email: payload.p_email,
-    payment: payload.payment,
-    requestid: payload.requestid,
-  });
-
-  return new Response('OK', { status: 200 });
+  res.status(200).send('OK');
 }
