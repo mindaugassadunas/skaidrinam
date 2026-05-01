@@ -3,6 +3,7 @@ import crypto from 'node:crypto';
 
 const ALLOWED_ORIGINS = new Set([
   'https://skaidrinam.lt',
+  'https://www.skaidrinam.lt',
   'https://skaidrinam.webflow.io',
 ]);
 
